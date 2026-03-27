@@ -1,0 +1,19 @@
+__pycache__/
+*.pyc
+
+# Secrets / personal data
+session.json
+
+# Runtime artifacts
+state.json
+log.txt
+scheduler.log
+catchup.log
+bot.lock
+
+# Debug screenshots
+*.png
+
+# Local envs
+.venv/
+.python-version
