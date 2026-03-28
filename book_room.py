@@ -6,7 +6,7 @@ import fcntl
 import json
 import os
 import re
-from bot_config import SLOT_ORDER, load_config
+from bot_config import SLOT_ORDER, load_config, slot_to_hour_24
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -506,9 +506,25 @@ def main() -> None:
             log(f"Forced run window: {args.start_slot}")
             book_room(start_slot=args.start_slot, max_bookings=1)
         else:
-            # Scheduler/default run: use earliest configured slot.
-            chosen = config["start_slots"][0]
-            log(f"Default run window from config: {chosen}")
+            # launchd runs the same command at each StartCalendarInterval hour.
+            # We must pick the slot that matches *this* run's hour (1pm run → 1pm slot, etc.).
+            now_h = datetime.now().hour
+            chosen = None
+            for slot in config["start_slots"]:
+                try:
+                    if slot_to_hour_24(slot) == now_h:
+                        chosen = slot
+                        break
+                except ValueError:
+                    continue
+            if chosen is None:
+                chosen = config["start_slots"][0]
+                log(
+                    f"Scheduler run at hour {now_h}: no start_slot matches; "
+                    f"fallback to first configured slot: {chosen}"
+                )
+            else:
+                log(f"Scheduler run at hour {now_h}: booking window {chosen}")
             book_room(start_slot=chosen, max_bookings=1)
     finally:
         try:

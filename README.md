@@ -20,6 +20,7 @@ This project automates booking study rooms on `learn.ivey.ca` using Playwright.
    - This installs dependencies + browser
    - Opens login once to create `session.json`
    - Installs scheduler jobs automatically
+4. Optional: follow `FRIEND_SETUP.md` for a step-by-step checklist.
 
 ### Preset setups (one-click)
 - `setup_friend_3pm_4pm.command` → applies `3pm/4pm` preset, then runs setup.
@@ -35,3 +36,6 @@ This project automates booking study rooms on `learn.ivey.ca` using Playwright.
 ## Updating schedule after config changes
 If `config.json` changes, run:
 `python3 install_scheduler.py`
+
+## Scheduler behavior (important)
+`install_scheduler.py` registers **one** launchd job that runs at **each** hour in `start_slots` (e.g. 1pm and 2pm). Each run must book **that** hour’s slot. The bot picks the slot by matching the **current clock hour** to your configured `start_slots` (so the 2pm run books `2pm`, not `1pm` again).
