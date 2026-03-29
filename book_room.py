@@ -43,11 +43,23 @@ def save_state(date_str: str, slot: str, room: str) -> None:
 DEBUG_LOGS = False
 
 
-def book_room(start_slot: str, max_bookings: int = 1) -> None:
+def book_room(
+    start_slot: str,
+    max_bookings: int = 1,
+    *,
+    target_date_override: datetime | None = None,
+) -> None:
     config = load_config()
     room_rankings = config["room_rankings"]
 
-    target_date = datetime.now() + timedelta(days=14)
+    if target_date_override is not None:
+        target_date = target_date_override.replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+    else:
+        target_date = (datetime.now() + timedelta(days=14)).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
     target_day = str(target_date.day)
     target_month_label = target_date.strftime("%B %Y")
     target_year = target_date.year
@@ -488,8 +500,20 @@ def main() -> None:
         choices=SLOT_ORDER,
         help="Force run window start slot (used by catchup/scheduler).",
     )
+    parser.add_argument(
+        "--target-date",
+        metavar="YYYY-MM-DD",
+        help="Book this calendar date instead of today + 14 days (manual/catch-up).",
+    )
     args = parser.parse_args()
     config = load_config()
+
+    target_override: datetime | None = None
+    if args.target_date:
+        try:
+            target_override = datetime.strptime(args.target_date.strip(), "%Y-%m-%d")
+        except ValueError:
+            parser.error("--target-date must be YYYY-MM-DD")
 
     # Prevent two instances running at once
     BASE_DIR.mkdir(parents=True, exist_ok=True)
@@ -504,7 +528,11 @@ def main() -> None:
     try:
         if args.start_slot:
             log(f"Forced run window: {args.start_slot}")
-            book_room(start_slot=args.start_slot, max_bookings=1)
+            book_room(
+                start_slot=args.start_slot,
+                max_bookings=1,
+                target_date_override=target_override,
+            )
         else:
             # launchd runs the same command at each StartCalendarInterval hour.
             # We must pick the slot that matches *this* run's hour (1pm run → 1pm slot, etc.).
@@ -518,14 +546,22 @@ def main() -> None:
                 except ValueError:
                     continue
             if chosen is None:
-                chosen = config["start_slots"][0]
+                # Do not fall back to start_slots[0]: a run in the wrong hour (e.g. still
+                # 12:xx before unlock, or a delayed/mis-timed launch) would start from 1pm,
+                # fail 1pm in the grid, walk to 2pm via first_available_slot, and steal the
+                # 2pm booking; the real 2pm job then skips as already booked.
                 log(
-                    f"Scheduler run at hour {now_h}: no start_slot matches; "
-                    f"fallback to first configured slot: {chosen}"
+                    f"Scheduler run at hour {now_h}: no start_slot matches "
+                    f"{config['start_slots']} — exiting without booking (use catchup or "
+                    f"--start-slot if intentional)"
                 )
-            else:
-                log(f"Scheduler run at hour {now_h}: booking window {chosen}")
-            book_room(start_slot=chosen, max_bookings=1)
+                return
+            log(f"Scheduler run at hour {now_h}: booking window {chosen}")
+            book_room(
+                start_slot=chosen,
+                max_bookings=1,
+                target_date_override=target_override,
+            )
     finally:
         try:
             fcntl.flock(lock, fcntl.LOCK_UN)

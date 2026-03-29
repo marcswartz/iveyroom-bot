@@ -3,9 +3,10 @@
 ### What this bot does
 - Books Ivey breakout rooms on Canvas (`learn.ivey.ca`) **14 days ahead**.
 - Each time slot opens **exactly 14 days ahead by the hour**.
-- The bot runs at your chosen hours (example: 3pm + 4pm) and tries to book:
+- The bot runs at **one minute past** your chosen hours (example: 3:01 PM + 4:01 PM) and tries to book:
   - Your preferred rooms first (in order)
   - Otherwise any available room
+- If the Mac was closed at those times, **catchup** runs at **:05** past each hour from your first slot through **11:05 PM** and retries any slot that did not already succeed today (see `catchup.log` / `log.txt`).
 
 ### 1) Download the folder
 - Download the repo as a ZIP from GitHub and unzip it, or receive the folder from a friend.

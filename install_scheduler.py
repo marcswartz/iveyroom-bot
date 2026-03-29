@@ -10,11 +10,19 @@ from bot_config import load_config, slot_to_hour_24
 BASE_DIR = Path(__file__).resolve().parent
 LAUNCH_AGENTS = Path.home() / "Library" / "LaunchAgents"
 
+# One minute after the hour: slots are less likely to still be locked at :00.
+BOOKER_START_MINUTE = 1
+# Catchup at :05 from the first configured slot hour through 23:05 (inclusive) so
+# opening the laptop in the evening still retries missed slots the same day.
+CATCHUP_LAST_HOUR = 23
+
 
 def build_booker_plist(cfg: dict) -> dict:
     intervals = []
     for slot in cfg["start_slots"]:
-        intervals.append({"Hour": slot_to_hour_24(slot), "Minute": 0})
+        intervals.append(
+            {"Hour": slot_to_hour_24(slot), "Minute": BOOKER_START_MINUTE}
+        )
     return {
         "Label": "com.iveybot.booker",
         "ProgramArguments": [
@@ -28,10 +36,11 @@ def build_booker_plist(cfg: dict) -> dict:
 
 
 def build_catchup_plist(cfg: dict) -> dict:
-    # Hourly catchup from earliest configured hour through +3 hours.
     min_hour = min(slot_to_hour_24(s) for s in cfg["start_slots"])
-    max_hour = max(slot_to_hour_24(s) for s in cfg["start_slots"]) + 3
-    intervals = [{"Hour": h, "Minute": 5} for h in range(min_hour, max_hour + 1)]
+    intervals = [
+        {"Hour": h, "Minute": 5}
+        for h in range(min_hour, CATCHUP_LAST_HOUR + 1)
+    ]
     return {
         "Label": "com.iveybot.catchup",
         "ProgramArguments": [

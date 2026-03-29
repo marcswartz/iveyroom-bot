@@ -38,4 +38,6 @@ If `config.json` changes, run:
 `python3 install_scheduler.py`
 
 ## Scheduler behavior (important)
-`install_scheduler.py` registers **one** launchd job that runs at **each** hour in `start_slots` (e.g. 1pm and 2pm). Each run must book **that** hour’s slot. The bot picks the slot by matching the **current clock hour** to your configured `start_slots` (so the 2pm run books `2pm`, not `1pm` again).
+`install_scheduler.py` registers **one** launchd job that runs at **each** hour in `start_slots` (e.g. 1pm and 2pm), at **one minute past** that hour (`13:01`, `14:01`, …) so the grid is usually unlocked. Each run must book **that** hour’s slot. The bot picks the slot by matching the **current clock hour** to your configured `start_slots` (so the 2pm run books `2pm`, not `1pm` again).
+
+**Catchup** runs at **:05** past every hour from the **earliest** configured slot through **11:05 PM** the same day. If the Mac was asleep through 1:01 / 2:01, the next catchup while you’re awake can still run `book_room.py --start-slot …` for any slot that has not already logged `SUCCESS` today.
